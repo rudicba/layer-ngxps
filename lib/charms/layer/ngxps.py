@@ -115,10 +115,10 @@ def create_tmpfs(tmpfs_size):
 def create_dhe(dhe_size):
     env = {'RANDFILE': '/root/.rnd'}
     host.mkdir('/usr/local/nginx/ssl', owner='root', group='root')
+    openssl_cmd = ['openssl', 'dhparam', '-out',
+                   '/usr/local/nginx/ssl/dhparams.pem', str(dhe_size)]
 
-    check_call([
-        'openssl', 'dhparam', '-out',
-        '/usr/local/nginx/ssl/dhparams.pem', str(dhe_size)], env=env)
+    check_call(openssl_cmd, env=env, stdout=DEVNULL)
 
 
 def add_site(context):
