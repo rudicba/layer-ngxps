@@ -44,9 +44,7 @@ server {
         expires 1y;
     }
 
-    {%- if naxsi %}
     location /RequestDenied {
       return 418;
     }
-    {%- endif %}
 }
