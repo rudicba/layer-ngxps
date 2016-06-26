@@ -10,8 +10,6 @@ from charmhelpers.core.templating import render
 from charmhelpers.fetch import apt_install
 
 
-CONFIG = hookenv.config()
-
 PACKAGES = ['build-essential', 'zlib1g-dev', 'libssl-dev', 'libpcre3',
             'libpcre3-dev', 'unzip', 'geoip-database', 'wget', 'libgeoip1',
             'libgeoip-dev']
@@ -85,14 +83,16 @@ def install(nginx, nps, psol, naxsi):
 
 
 def configure():
+    config = hookenv.config()
+
     render('conf/nginx.conf.j2', '/usr/local/nginx/conf/nginx.conf',
-           CONFIG, owner='root', group='root')
+           config, owner='root', group='root')
 
     render('conf/ssl.conf.j2', '/usr/local/nginx/conf/ssl.conf',
-           CONFIG, owner='root', group='root')
+           config, owner='root', group='root')
 
     render('conf/pagespeed.conf.j2', '/usr/local/nginx/conf/pagespeed.conf',
-           CONFIG, owner='root', group='root')
+           config, owner='root', group='root')
 
 
 def create_tmpfs(tmpfs_size):
