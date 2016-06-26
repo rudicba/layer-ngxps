@@ -10,22 +10,20 @@ from charmhelpers.core.templating import render
 from charmhelpers.fetch import apt_install
 
 
-config = hookenv.config()
-
-packages = ['build-essential', 'zlib1g-dev', 'libssl-dev', 'libpcre3',
+PACKAGES = ['build-essential', 'zlib1g-dev', 'libssl-dev', 'libpcre3',
             'libpcre3-dev', 'unzip', 'geoip-database', 'wget', 'libgeoip1',
             'libgeoip-dev']
 
-build_path = '/root/build'
+BUILD_PATH = '/root/build'
 
-build_opts = [
-        '--with-http_ssl_module',
-        '--with-http_gzip_static_module',
-        '--without-mail_pop3_module',
-        '--without-mail_smtp_module',
-        '--without-mail_imap_module',
-        '--with-http_geoip_module',
-    ]
+BUILD_OPTS = [
+    '--with-http_ssl_module',
+    '--with-http_gzip_static_module',
+    '--without-mail_pop3_module',
+    '--without-mail_smtp_module',
+    '--without-mail_imap_module',
+    '--with-http_geoip_module',
+]
 
 
 def extract(tar, destination):
@@ -38,7 +36,7 @@ def tar_root(tar):
 
 
 def install(nginx, nps, psol, naxsi):
-    db = unitdata.kv()
+    unit_data = unitdata.kv()
 
     required = {
         'nginx': tar_root(nginx),
@@ -46,27 +44,27 @@ def install(nginx, nps, psol, naxsi):
         'psol': tar_root(psol),
         'naxsi': tar_root(naxsi),
     }
-    installed = db.get('installed', default={})
+    installed = unit_data.get('installed', default={})
 
     if required == installed:
         return False
 
-    if os.path.isdir(build_path):
-        rmtree(build_path)
+    if os.path.isdir(BUILD_PATH):
+        rmtree(BUILD_PATH)
 
-    nginx_src = extract(nginx, build_path)
-    nps_src = extract(nps, build_path)
-    naxsi_src = extract(naxsi, build_path)
+    nginx_src = extract(nginx, BUILD_PATH)
+    nps_src = extract(nps, BUILD_PATH)
+    naxsi_src = extract(naxsi, BUILD_PATH)
     extract(psol, nps_src)
 
-    apt_install(packages)
+    apt_install(PACKAGES)
 
     with host.chdir(nginx_src):
         try:
             configure_cmd = [
                 './configure', '--add-module={}'.format(nps_src),
                 '--add-module={}'.format(os.path.join(naxsi_src, 'naxsi_src')),
-            ] + build_opts
+            ] + BUILD_PATH
             check_call(configure_cmd, stdout=DEVNULL)
             check_call(['make'], stdout=DEVNULL)
             check_call(['make', 'install'], stdout=DEVNULL)
@@ -79,12 +77,14 @@ def install(nginx, nps, psol, naxsi):
     copyfile(os.path.join(naxsi_src, 'naxsi_config', 'naxsi_core.rules'),
              '/usr/local/nginx/conf/naxsi_core.rules')
 
-    db.set('installed', required)
+    unit_data.set('installed', required)
 
     return True
 
 
 def configure():
+    config = hookenv.config()
+
     render('conf/nginx.conf.j2', '/usr/local/nginx/conf/nginx.conf',
            config, owner='root', group='root')
 
@@ -166,7 +166,7 @@ def conf_files():
     conf = '/usr/local/nginx/conf/'
     files = []
 
-    for path, subdirs, names in os.walk(conf):
+    for path, _, names in os.walk(conf):
         for name in names:
             files.append(os.path.join(path, name))
 
