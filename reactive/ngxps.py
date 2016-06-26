@@ -1,22 +1,31 @@
+""" Reactive layer for install and manage Nginx Pagespeed
+"""
 from charmhelpers.core import hookenv
 
 from charms.layer import ngxps
 
-from charms.reactive import (when, when_not, when_any, set_state, remove_state, hook)
+from charms.reactive import (
+    when, when_not, set_state, remove_state, hook
+)
 from charms.reactive.helpers import data_changed
 
 
-config = hookenv.config()
-
-
 def reset_state():
-    remove_state('ngxps.restart')
+    """ Reset any state that tell reactive to restart nginx, usefull to ensure
+    that service will not be restarted twice.
+    """
     remove_state('ngxps.reload')
     remove_state('ngxps.upgrade')
 
 
 @hook('upgrade-charm', 'install')
 def install():
+    """ Install or upgrade Nginx Pagespeed, if new version is installed it
+    will set two states: installed and upgrade.
+
+    upgrade: set that service need to be restarted
+    installed: set that Nginx is installed and ready for configure and start
+    """
     hookenv.status_set('maintenance', 'installing nginx')
 
     nginx = hookenv.resource_get('nginx')
@@ -24,31 +33,45 @@ def install():
     psol = hookenv.resource_get('psol')
     naxsi = hookenv.resource_get('naxsi')
 
-    if nginx and nps and psol and naxsi:
-        if ngxps.install(nginx, nps, psol, naxsi):
-            set_state('ngxps.installed')
-            set_state('ngxps.upgrade')
-    else:
+    if not (nginx or nps or psol or naxsi):
         hookenv.status_set('blocked', 'could not fetch all needed resources')
+        return
+
+    if ngxps.install(nginx, nps, psol, naxsi):
+        set_state('ngxps.installed')
+        set_state('ngxps.upgrade')
 
     # Ensure last availables templates are render on upgrade even if not
     # config change.
-    set_state('ngxps.configure')
+    configure(force=True)
 
 
-@when_any('config.changed', 'ngxps.configure')
-def configure():
+@when('config.changed')
+def configure(force=False):
+    """ Configure Nginx only if charm config change.
+
+    if force configure nginx if charm config change or not
+    """
+    config = hookenv.config()
+
+    if not (data_changed('ngxps.config', config) or force):
+        return
+
     hookenv.status_set('maintenance', 'configuring nginx')
+    # TODO: configure shoud return treo or false if file change
     ngxps.configure()
     ngxps.enable()
 
-    remove_state('ngxps.configure')
     set_state('ngxps.configured')
     set_state('ngxps.reload')
 
 
 @when('config.changed.tmpfs_size')
 def create_tmpfs():
+    """ Create cache filesystem
+    """
+    config = hookenv.config()
+
     hookenv.status_set('maintenance', 'creating cache')
     with ngxps.stop_start():
         ngxps.create_tmpfs(config['tmpfs_size'])
@@ -58,6 +81,10 @@ def create_tmpfs():
 
 @when('config.changed.dhe_size')
 def create_dhe():
+    """ Create Diffie-Hellman key
+    """
+    config = hookenv.config()
+
     hookenv.status_set('maintenance', 'creating dhe')
     with ngxps.stop_start():
         ngxps.create_dhe(config['dhe_size'])
@@ -67,19 +94,23 @@ def create_dhe():
 
 @when('ngxps.ready')
 def update_status():
+    """ Set Nginx Pagespeed status
+    """
     _, message = hookenv.status_get()
 
     if ngxps.running():
-        if not message == 'nginx running':
+        if message != 'nginx running':
             hookenv.status_set('active', 'nginx running')
     else:
-        if not message == 'nginx not running':
+        if message != 'nginx not running':
             hookenv.status_set('maintenance', 'nginx not running')
 
 
 @when('ngxps.installed', 'ngxps.configured', 'dhe.ready', 'tmpfs.ready')
 @when_not('ngxps.ready')
 def start():
+    """ Start Nginx Pagespeed service
+    """
     hookenv.status_set('active', 'starting nginx')
     if ngxps.start():
         set_state('ngxps.ready')
@@ -88,7 +119,9 @@ def start():
 
 
 @when('ngxps.ready', 'ngxps.upgrade')
-def upgrade():
+def nginx_upgrade():
+    """ Upgrade Nginx Pagespeed service
+    """
     hookenv.status_set('active', 'upgrading nginx')
     if ngxps.upgrade():
         reset_state()
@@ -96,24 +129,21 @@ def upgrade():
 
 
 @when('ngxps.ready', 'ngxps.reload')
-def reload():
+@when_not('ngxps.upgrade')
+def nginx_reload():
+    """ Reload Nginx Pagespeed service
+    """
     hookenv.status_set('active', 'reloading nginx')
     if ngxps.reload():
         reset_state()
         update_status()
 
 
-@when('ngxps.ready', 'ngxps.restart')
-def restart():
-    hookenv.status_set('active', 'restarting nginx')
-    if ngxps.restart():
-        reset_state()
-        update_status()
-
-
 @when('ngxps.ready')
 @when_not('web-engine.available')
-def disable_nginx():
+def disable_sites():
+    """ Disable any sites created by old relations
+    """
     if not data_changed('web-engine.contexts', {}):
         return
 
@@ -127,6 +157,8 @@ def disable_nginx():
 
 @when('ngxps.ready', 'web-engine.available')
 def add_sites(webengine):
+    """ Add servers blocks for all relations with charm
+    """
     # TODO: on upgrade sometimes templates changes, so this function needed
     # to be runned not only if context change.
     if not data_changed('web-engine.contexts', webengine.contexts()):
