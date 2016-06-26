@@ -1,13 +1,28 @@
+# Configuring PageSpeed Filters
 pagespeed RewriteLevel {{ RewriteLevel }};
 
+# Enable individual PageSpeed Filters
 {%- for EnableFilter in EnableFilters %}
 pagespeed EnableFilters {{ EnableFilter }};
 {%- endfor %}
 
+pagespeed Statistics on;
+pagespeed StatisticsLogging on;
+pagespeed LogDir /usr/local/nginx/logs/pagespeed;
+pagespeed AdminPath /pagespeed_admin;
+
+# PageSpeed Admin
+location /ngx_pagespeed_statistics { allow all; }
+location /ngx_pagespeed_global_statistics { allow all; }
+location /ngx_pagespeed_message { allow all; }
+location /pagespeed_console { allow all; }
+location ~ ^/pagespeed_admin { allow all; }
+location ~ ^/pagespeed_global_admin { allow all; }
+
 # Ensure requests for pagespeed optimized resources go to the pagespeed handler
 # and no extraneous headers get set.
 location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
-    add_header "" "";
+  add_header "" "";
 }
 location ~ "^/pagespeed_static/" { }
 location ~ "^/ngx_pagespeed_beacon$" { }

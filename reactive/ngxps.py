@@ -2,7 +2,7 @@ from charmhelpers.core import hookenv
 
 from charms.layer import ngxps
 
-from charms.reactive import (when, when_not, set_state, remove_state, hook)
+from charms.reactive import (when, when_not, when_any, set_state, remove_state, hook)
 from charms.reactive.helpers import data_changed
 
 
@@ -31,13 +31,18 @@ def install():
     else:
         hookenv.status_set('blocked', 'could not fetch all needed resources')
 
+    # Ensure last availables templates are render on upgrade even if not
+    # config change.
+    set_state('ngxps.configure')
 
-@when('config.changed')
+
+@when_any('config.changed', 'ngxps.configure')
 def configure():
     hookenv.status_set('maintenance', 'configuring nginx')
     ngxps.configure()
     ngxps.enable()
 
+    remove_state('ngxps.configure')
     set_state('ngxps.configured')
     set_state('ngxps.reload')
 
@@ -112,7 +117,7 @@ def disable_nginx():
     if not data_changed('web-engine.contexts', {}):
         return
 
-    if len(ngxps.enabled_sites()) == 0:
+    if ngxps.no_sites():
         return
 
     ngxps.enable_sites('')
@@ -122,9 +127,8 @@ def disable_nginx():
 
 @when('ngxps.ready', 'web-engine.available')
 def add_sites(webengine):
-    for context in webengine.contexts():
-        hookenv.log(context)
-
+    # TODO: on upgrade sometimes templates changes, so this function needed
+    # to be runned not only if context change.
     if not data_changed('web-engine.contexts', webengine.contexts()):
         return
 

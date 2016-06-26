@@ -158,6 +158,10 @@ def enabled_sites():
     return sites
 
 
+def no_sites():
+    return len(enabled_sites()) == 0
+
+
 def conf_files():
     conf = '/usr/local/nginx/conf/'
     files = []
