@@ -1,0 +1,44 @@
+name: ngxps
+summary: Nginx webserver with google pagespeed and naxsi modules
+maintainer: Rodolfo E. Edelmann <rudicba@gmail.com>
+description: |
+  Nginx (pronounced "engine x") is a web server. It can act as a reverse proxy
+  server for HTTP, HTTPS, SMTP, POP3, and IMAP protocols, as well as a load
+  balancer and an HTTP cache.
+
+  Mod_pagespeed is an open-source Apache HTTP Server or Nginx webservers module,
+  which automatically applies chosen filters to pages and associated assets,
+  such as stylesheets, JavaScript, and HTML files, as well as to images and
+  website cache requirements.
+
+  NAXSI is Nginx Anti XSS & SQL injection. In simple words, it's a firewall for
+  web applications (WAF) for Nginx, protecting from XSS, SQL injections, CSRF,
+  Local & Remote file inclusions. NAXSI is known for its fast working and simple
+  configuring. It's a good alternative for mod_security in Apache.
+tags:
+  - ops
+  - network
+  - web_server
+  - perfomance
+provides:
+  web-engine:
+    interface: ngxps-vhost
+resources:
+  nginx:
+    type: file
+    filename: nginx.tar.gz
+    description: "from: http://nginx.org/download/"
+  nps:
+    type: file
+    filename: ngx_pagespeed.tar.gz
+    description: "from: https://github.com/pagespeed/ngx_pagespeed/release/"
+  psol:
+    type: file
+    filename: psol.tar.gz
+    description: "from: https://dl.google.com/dl/page-speed/psol/"
+  naxsi:
+    type: file
+    filename: naxsi.tar.gz
+    description: "from: https://github.com/nbs-system/naxsi/releases"
+series:
+  - trusty

@@ -1,0 +1,23 @@
+options:
+  auto_worker_processes:
+    type: boolean
+    default: true
+    description: automatic detection of best worker processes number
+  worker_processes:
+    type: int
+    default: 2
+    description: defines the number of worker processes if not auto
+  worker_connections:
+    type: int
+    default: 1024
+    description: |
+      Maximum number of simultaneous connections that can be opened
+      by a worker process
+  tmpfs_size:
+    type: int
+    default: 256
+    description: "Tmpfs size in MB to use for nginx pagespeed cache"
+  dhe_size:
+    type: int
+    default: 1024
+    description: "(Ephemeral Diffie-Hellman) key size, used for SSL"

@@ -1,0 +1,52 @@
+server {
+    listen {{ listen }};
+
+    root {{ root }};
+    index index.html index.htm;
+    {%- if server_name %}
+    server_name {{ server_name }};
+    {%- endif %}
+
+    include sites-enabled/{{ service_name }}/pagespeed.conf;
+
+    access_log /usr/local/nginx/logs/{{ service_name }}_access.log;
+    error_log /usr/local/nginx/logs/{{ service_name }}_error.log;
+
+    location / {
+        try_files $uri $uri/ =404;
+        include sites-enabled/{{ service_name }}/naxsi.rules;
+    }
+
+    location = /favicon.ico {
+        log_not_found off;
+        access_log /dev/null;
+    }
+
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log /dev/null;
+    }
+
+    location ~* \.(jpg|jpeg|gif|png|bmp|svg|jp2|tif|tiff||xml|txt)$ {
+        access_log          off;
+        log_not_found       off;
+        expires             30d;
+    }
+
+    location ~* \.(css|js|pdf|flv|swf)$ {
+        access_log          off;
+        log_not_found       on;
+        expires             14d;
+    }
+
+    location ~* \.(ico)$ {
+        expires 1y;
+    }
+
+    {%- if naxsi %}
+    location /RequestDenied {
+      return 418;
+    }
+    {%- endif %}
+}

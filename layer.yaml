@@ -1,0 +1,2 @@
+repo: .
+includes: ['layer:basic', 'interface:interface-ngxps-vhost']

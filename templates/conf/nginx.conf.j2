@@ -1,0 +1,33 @@
+{%- if auto_worker_processes == True %}
+worker_processes        auto;
+{%- else %}
+worker_processes        {{ worker_processes }};
+{%- endif %}
+
+events {
+    worker_connections  {{ worker_connections }};
+}
+
+http {
+    include             naxsi_core.rules;
+    include             mime.types;
+    default_type        application/octet-stream;
+
+    sendfile            on;
+    keepalive_timeout   65;
+
+    gzip                on;
+    gzip_disable        msie6;
+    gzip_static         on;
+    gzip_vary           on;
+    gzip_types          application/json application/javascript application/xml+rss
+                        text/plain text/css text/xml image/svg+xml image/x-icon;
+
+    server_tokens       off;
+
+    geoip_country       /usr/share/GeoIP/GeoIP.dat;
+
+    include             pagespeed.conf;
+    include             ssl.conf;
+    include             sites-enabled/*/site.conf;
+}
