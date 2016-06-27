@@ -64,7 +64,7 @@ def install(nginx, nps, psol, naxsi):
             configure_cmd = [
                 './configure', '--add-module={}'.format(nps_src),
                 '--add-module={}'.format(os.path.join(naxsi_src, 'naxsi_src')),
-            ] + BUILD_PATH
+            ] + BUILD_OPTS
             check_call(configure_cmd, stdout=DEVNULL)
             check_call(['make'], stdout=DEVNULL)
             check_call(['make', 'install'], stdout=DEVNULL)
