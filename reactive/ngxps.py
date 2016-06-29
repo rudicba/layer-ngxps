@@ -37,33 +37,25 @@ def install():
         hookenv.status_set('blocked', 'could not fetch all needed resources')
         return
 
-    if ngxps.install(nginx, nps, psol, naxsi):
+    if ngxps.build_sources(nginx, nps, psol, naxsi):
         set_state('ngxps.installed')
         set_state('ngxps.upgrade')
 
     # Ensure last availables templates are render on upgrade even if not
     # config change.
-    configure(force=True)
+    configure()
 
 
 @when('config.changed')
-def configure(force=False):
-    """ Configure Nginx only if charm config change.
-
-    if force configure nginx if charm config change or not
+def configure():
+    """ Configure Nginx Pagespeed
     """
-    config = hookenv.config()
-
-    if not (data_changed('ngxps.config', config) or force):
-        return
-
-    hookenv.status_set('maintenance', 'configuring nginx')
-    # TODO: configure shoud return treo or false if file change
-    ngxps.configure()
-    ngxps.enable()
+    if ngxps.configure():
+        hookenv.status_set('maintenance', 'configuring nginx')
+        set_state('ngxps.reload')
 
     set_state('ngxps.configured')
-    set_state('ngxps.reload')
+    ngxps.enable()
 
 
 @when('config.changed.tmpfs_size')
@@ -144,10 +136,7 @@ def nginx_reload():
 def disable_sites():
     """ Disable any sites created by old relations
     """
-    if not data_changed('web-engine.contexts', {}):
-        return
-
-    if ngxps.no_sites():
+    if not data_changed('web-engine.contexts', {}) or ngxps.no_sites():
         return
 
     ngxps.enable_sites('')
