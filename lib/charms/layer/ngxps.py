@@ -28,6 +28,11 @@ BUILD_OPTS = [
     '--without-mail_smtp_module',
     '--without-mail_imap_module',
     '--with-http_geoip_module',
+    '--http-client-body-temp-path=/usr/local/nginx/temp/body',
+    '--http-fastcgi-temp-path=/usr/local/nginx/temp/fastcgi',
+    '--http-proxy-temp-path=/usr/local/nginx/temp/proxy',
+    '--http-scgi-temp-path=/usr/local/nginx/temp/scgi',
+    '--http-uwsgi-temp-path=/usr/local/nginx/temp/uwsgi',
 ]
 
 
@@ -71,13 +76,13 @@ def build_sources(nginx, nps, psol, naxsi):
         check_call(configure_cmd, stdout=DEVNULL)
         check_call(['make'], stdout=DEVNULL)
         check_call(['checkinstall',
-                    '--install=no',
-                    '--fstrans=yes',
+                    '--install=yes',
+                    '--fstrans=no',
                     '--pkgname=nginx',
                     '--pkgversion={}'.format(version),
                     '--pkgrelease={}'.format(release),
                     '--pkgarch={}'.format(arch),
-                    '-y'])
+                    '-y', 'make', 'install'])
 
         deb = '{name}_{version}-{release}_{arch}'
 
@@ -86,16 +91,25 @@ def build_sources(nginx, nps, psol, naxsi):
 
 def install(src):
     """ Install nginx from .deb file
+
+    Retuns:
+        True if new installation, False otherwise
     """
+    new_version = False
     dst_folder = '/root/packages'
     host.mkdir(dst_folder, owner='root', group='root')
 
     dst = os.path.join(dst_folder, os.path.basename(src))
     copyfile(src, dst)
 
-    check_call(['dpkg', '-i', dst])
+    if any_file_changed([dst]):
+        new_version = True
+        check_call(['dpkg', '-i', dst])
 
-    return any_file_changed(['/usr/local/nginx/sbin'])
+    host.mkdir('/usr/local/nginx/logs', owner='root', group='root')
+    host.mkdir('/usr/local/nginx/temp', owner='root', group='root')
+
+    return new_version
 
 
 def configure():
