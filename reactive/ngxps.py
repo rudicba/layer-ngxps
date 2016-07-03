@@ -3,7 +3,9 @@
 from charmhelpers.core import hookenv
 from charms.layer import ngxps
 
-from charms.reactive import when, when_not, set_state, remove_state, hook
+from charms.reactive import (
+    when, when_any, when_not, set_state, remove_state, hook
+)
 from charms.reactive.helpers import data_changed
 
 
@@ -31,12 +33,10 @@ def install():
         set_state('ngxps.installed')
         set_state('ngxps.upgrade')
 
-    # Ensure last availables templates are render on upgrade even if not
-    # config change.
-    configure()
+    set_state('ngxps.configure')
 
 
-@when('config.changed')
+@when_any('config.changed', 'ngxps.configure')
 def configure():
     """ Configure Nginx Pagespeed
     """
@@ -45,6 +45,7 @@ def configure():
         set_state('ngxps.reload')
 
     set_state('ngxps.configured')
+    remove_state('ngxps.configure')
     ngxps.enable()
 
 
