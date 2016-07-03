@@ -1,11 +1,10 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
 from charmhelpers.core import hookenv
-
 from charms.layer import ngxps
 
 from charms.reactive import (
-    when, when_not, set_state, remove_state, hook
+    when, when_any, when_not, set_state, remove_state, hook
 )
 from charms.reactive.helpers import data_changed
 
@@ -28,42 +27,26 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
-    nginx = hookenv.resource_get('nginx')
-    nps = hookenv.resource_get('nps')
-    psol = hookenv.resource_get('psol')
-    naxsi = hookenv.resource_get('naxsi')
+    ngxps_deb = hookenv.resource_get('ngxps_deb')
 
-    if not (nginx or nps or psol or naxsi):
-        hookenv.status_set('blocked', 'could not fetch all needed resources')
-        return
-
-    if ngxps.install(nginx, nps, psol, naxsi):
+    if ngxps.install(ngxps_deb):
         set_state('ngxps.installed')
         set_state('ngxps.upgrade')
 
-    # Ensure last availables templates are render on upgrade even if not
-    # config change.
-    configure(force=True)
+    set_state('ngxps.configure')
 
 
-@when('config.changed')
-def configure(force=False):
-    """ Configure Nginx only if charm config change.
-
-    if force configure nginx if charm config change or not
+@when_any('config.changed', 'ngxps.configure')
+def configure():
+    """ Configure Nginx Pagespeed
     """
-    config = hookenv.config()
-
-    if not (data_changed('ngxps.config', config) or force):
-        return
-
-    hookenv.status_set('maintenance', 'configuring nginx')
-    # TODO: configure shoud return treo or false if file change
-    ngxps.configure()
-    ngxps.enable()
+    if ngxps.configure():
+        hookenv.status_set('maintenance', 'configuring nginx')
+        set_state('ngxps.reload')
 
     set_state('ngxps.configured')
-    set_state('ngxps.reload')
+    remove_state('ngxps.configure')
+    ngxps.enable()
 
 
 @when('config.changed.tmpfs_size')
@@ -144,10 +127,7 @@ def nginx_reload():
 def disable_sites():
     """ Disable any sites created by old relations
     """
-    if not data_changed('web-engine.contexts', {}):
-        return
-
-    if ngxps.no_sites():
+    if not data_changed('web-engine.contexts', {}) or ngxps.no_sites():
         return
 
     ngxps.enable_sites('')
