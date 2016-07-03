@@ -24,21 +24,9 @@ provides:
   web-engine:
     interface: ngxps-vhost
 resources:
-  nginx:
+  ngxps_deb:
     type: file
-    filename: nginx.tar.gz
-    description: "from: http://nginx.org/download/"
-  nps:
-    type: file
-    filename: ngx_pagespeed.tar.gz
-    description: "from: https://github.com/pagespeed/ngx_pagespeed/release/"
-  psol:
-    type: file
-    filename: psol.tar.gz
-    description: "from: https://dl.google.com/dl/page-speed/psol/"
-  naxsi:
-    type: file
-    filename: naxsi.tar.gz
-    description: "from: https://github.com/nbs-system/naxsi/releases"
+    filename: nginx.deb
+    description: "Package with nginx, pagespeed and naxsi"
 series:
   - trusty
