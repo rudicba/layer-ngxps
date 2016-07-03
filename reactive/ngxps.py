@@ -1,12 +1,9 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
 from charmhelpers.core import hookenv
-
 from charms.layer import ngxps
 
-from charms.reactive import (
-    when, when_not, set_state, remove_state, hook
-)
+from charms.reactive import when, when_not, set_state, remove_state, hook
 from charms.reactive.helpers import data_changed
 
 
@@ -28,16 +25,9 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
-    nginx = hookenv.resource_get('nginx')
-    nps = hookenv.resource_get('nps')
-    psol = hookenv.resource_get('psol')
-    naxsi = hookenv.resource_get('naxsi')
+    ngxps_deb = hookenv.resource_get('ngxps_deb')
 
-    if not (nginx or nps or psol or naxsi):
-        hookenv.status_set('blocked', 'could not fetch all needed resources')
-        return
-
-    if ngxps.build_sources(nginx, nps, psol, naxsi):
+    if ngxps.install(ngxps_deb):
         set_state('ngxps.installed')
         set_state('ngxps.upgrade')
 
