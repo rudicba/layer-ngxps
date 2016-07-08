@@ -130,7 +130,8 @@ def configure():
     render('conf/pagespeed.conf.j2', '/usr/local/nginx/conf/pagespeed.conf',
            config, owner='root', group='root')
 
-    render('conf/naxsi_core.rules.j2', '/usr/local/nginx/conf/naxsi_core.rules',
+    render('conf/naxsi_core.rules.j2',
+           '/usr/local/nginx/conf/naxsi_core.rules',
            config, owner='root', group='root')
 
     return any_file_changed([
@@ -147,11 +148,11 @@ def create_tmpfs(tmpfs_size):
     cache_path = '/var/ngx_pagespeed_cache'
     host.mkdir(cache_path, owner='nobody', group='nogroup')
 
-    options = 'rw,uid={user},gid={group},size={size}m,mode=0775,noatime'.format(
-        size=tmpfs_size, user='nobody', group='nogroup')
+    opts_tmpl = 'rw,uid={user},gid={group},size={size}m,mode=0775,noatime'
+    opts = opts_tmpl.format(size=tmpfs_size, user='nobody', group='nogroup')
 
     host.fstab_remove(cache_path)
-    host.fstab_add('tmpfs', cache_path, 'tmpfs', options=options)
+    host.fstab_add('tmpfs', cache_path, 'tmpfs', options=opts)
 
     for mount in host.mounts():
         if mount[0] == cache_path:

@@ -1,5 +1,7 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
+import os
+
 from charmhelpers.core import hookenv
 from charms.layer import ngxps
 
@@ -27,7 +29,8 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
-    ngxps_deb = hookenv.resource_get('ngxps_deb')
+    ngxps_deb = os.path.join(
+        hookenv.charm_dir(), 'resources', 'nginx_1.10.1-1_amd64.deb')
 
     if ngxps.install(ngxps_deb):
         set_state('ngxps.installed')

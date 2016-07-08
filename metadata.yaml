@@ -23,10 +23,5 @@ tags:
 provides:
   web-engine:
     interface: ngxps-vhost
-resources:
-  ngxps_deb:
-    type: file
-    filename: nginx.deb
-    description: "Package with nginx, pagespeed and naxsi"
 series:
   - trusty

@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+
+import amulet
+import requests
+import unittest
+import socket
+
+default_config = {
+    'auto_worker_processes': True,
+    'worker_processes': 2,
+    'worker_connections': 1024,
+    'tmpfs_size': 256,
+    'dhe_size': 1024,
+}
+
+
+class TestDeployment(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.deployment = amulet.Deployment(series='trusty')
+
+        cls.deployment.add('ngxps')
+
+        try:
+            cls.deployment.setup(timeout=900)
+            cls.deployment.sentry.wait()
+        except amulet.helpers.TimeoutError:
+            amulet.raise_status(amulet.SKIP,
+                                msg="Environment wasn't stood up in time")
+        except:
+            raise
+
+        cls.unit_zero = cls.deployment.sentry.unit['ngxps/0']
+
+    def test_ngxps_running(self):
+        """Test nginx start correctly after installation
+
+        """
+        expected = '* nginx is running'
+
+        output, code = self.unit_zero.run('service nginx status')
+
+        self.assertEqual(code, 0)
+        self.assertEqual(output, expected)
+
+    def get_worker_setting(self):
+        """Return array with worker_processes and worker_connections settings
+
+        """
+        settings = {}
+        wp_line, code = self.unit_zero.run(
+            '/usr/local/nginx/sbin/nginx -T | grep worker_processes')
+
+        wc_line, code = self.unit_zero.run(
+            '/usr/local/nginx/sbin/nginx -T | grep worker_connections')
+
+        wp_arr = wp_line.split()
+        wc_arr = wc_line.split()
+
+        settings[wp_arr[0]] = wp_arr[1]
+        settings[wc_arr[0]] = wc_arr[1]
+
+        return settings
+
+    def test_reconfigure_disable_auto_worker_processes(self):
+        """Test nginx auto worker is configured
+
+        """
+        new_config = default_config.copy()
+        new_config['auto_worker_processes'] = False
+        new_config['worker_processes'] = 1
+        new_config['worker_connections'] = 512
+
+        self.deployment.configure('ngxps', new_config)
+        self.deployment.sentry.wait()
+
+        # Test if nginx is running after changing tmpfs size
+        self.test_ngxps_running()
+
+        expected = {
+            'worker_processes': '1;',
+            'worker_connections': '512;',
+        }
+
+        self.assertEqual(self.get_worker_setting(), expected)
+
+    def test_reconfigure_enable_auto_worker_processes(self):
+        """Test nginx auto worker is configured
+
+        """
+        new_config = default_config.copy()
+        new_config['auto_worker_processes'] = True
+        new_config['worker_connections'] = 1024
+
+        self.deployment.configure('ngxps', new_config)
+        self.deployment.sentry.wait()
+
+        # Test if nginx is running after changing tmpfs size
+        self.test_ngxps_running()
+
+        expected = {
+            'worker_processes': 'auto;',
+            'worker_connections': '1024;',
+        }
+
+        self.assertEqual(self.get_worker_setting(), expected)
+
+    def test_reconfigure_tmpfs_size(self):
+        """Test tmpfs size change and nginx keep running when tmpfs size change
+
+        """
+        # change tmpfs_size config and wait for hooks to complete
+        new_size = '128'
+        new_config = default_config.copy()
+        new_config['tmpfs_size'] = new_size
+
+        self.deployment.configure('ngxps', new_config)
+        self.deployment.sentry.wait()
+
+        # Test if nginx is running after changing tmpfs size
+        self.test_ngxps_running()
+
+        fstab_contents = self.unit_zero.file_contents('/etc/fstab')
+        expected_line = ('tmpfs /var/ngx_pagespeed_cache '
+                         'tmpfs rw,uid=nobody,'
+                         'gid=nogroup,size={}m,'
+                         'mode=0775,noatime 0 0').format(new_size)
+
+        occurs = fstab_contents.count(expected_line)
+
+        self.assertEqual(occurs, 1)
+
+    def test_reconfigure_dhe_size(self):
+        """Test dhe size change and nginx keep running when tmpfs size change
+
+        """
+        # change dhe_size config and wait for hooks to complete
+        new_size = '512'
+        dhparams = '/usr/local/nginx/ssl/dhparams.pem'
+        expected = 'PKCS#3 DH Parameters: ({new_size} bit)'.format(
+            new_size=new_size)
+
+        new_config = default_config.copy()
+        new_config['dhe_size'] = new_size
+
+        self.deployment.configure('ngxps', new_config)
+        self.deployment.sentry.wait()
+
+        # Test if nginx is running after changing dhe size
+        self.test_ngxps_running()
+
+        output, code = self.unit_zero.run(
+            'openssl dhparam -inform PEM -in {dhparams} -text'.format(
+                dhparams=dhparams))
+
+        self.assertEqual(code, 0)
+        self.assertEqual(output.split('\n')[0].strip(), expected)
+
+    def test_case(self):
+        # Now you can use self.deployment.sentry.unit[UNIT] to address each of
+        # the units and perform more in-depth steps.  You can also reference
+        # the first unit as self.unit.
+        # There are three test statuses that can be triggered with
+        # amulet.raise_status():
+        #   - amulet.PASS
+        #   - amulet.FAIL
+        #   - amulet.SKIP
+        # Each unit has the following methods:
+        #   - .info - An array of the information of that unit from Juju
+        #   - .file(PATH) - Get the details of a file on that unit
+        #   - .file_contents(PATH) - Get plain text output of PATH file from that unit
+        #   - .directory(PATH) - Get details of directory
+        #   - .directory_contents(PATH) - List files and folders in PATH on that unit
+        #   - .relation(relation, service:rel) - Get relation data from return service
+        #          add tests here to confirm service is up and working properly
+        # For example, to confirm that it has a functioning HTTP server:
+        #     page = requests.get('http://{}'.format(self.unit.info['public-address']))
+        #     page.raise_for_status()
+        # More information on writing Amulet tests can be found at:
+        #     https://jujucharms.com/docs/stable/tools-amulet
+        pass
+
+
+if __name__ == '__main__':
+    unittest.main()
