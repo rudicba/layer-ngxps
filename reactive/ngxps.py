@@ -30,7 +30,7 @@ def install():
     hookenv.status_set('maintenance', 'installing nginx')
 
     ngxps_deb = os.path.join(
-        hookenv.charmdir(), 'resources', 'nginx_1.10.1-1_amd64.deb')
+        hookenv.charm_dir(), 'resources', 'nginx_1.10.1-1_amd64.deb')
 
     if ngxps.install(ngxps_deb):
         set_state('ngxps.installed')
