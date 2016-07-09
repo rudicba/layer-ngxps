@@ -3,7 +3,6 @@
 import amulet
 import requests
 import unittest
-import socket
 
 default_config = {
     'auto_worker_processes': True,
@@ -32,16 +31,27 @@ class TestDeployment(unittest.TestCase):
 
         cls.unit_zero = cls.deployment.sentry.unit['ngxps/0']
 
+    def test_valid_config(self):
+        # Check valid config
+        _, code = self.unit_zero.run('/usr/local/nginx/sbin/nginx -t')
+        self.assertEqual(code, 0)
+
     def test_ngxps_running(self):
         """Test nginx start correctly after installation
 
         """
         expected = '* nginx is running'
 
+        # Check service running
         output, code = self.unit_zero.run('service nginx status')
 
         self.assertEqual(code, 0)
         self.assertEqual(output, expected)
+
+        # Check default site is online
+        page = requests.get('http://{}'.format(
+            self.unit_zero.info['public-address']))
+        page.raise_for_status()
 
     def get_worker_setting(self):
         """Return array with worker_processes and worker_connections settings
@@ -74,15 +84,13 @@ class TestDeployment(unittest.TestCase):
         self.deployment.configure('ngxps', new_config)
         self.deployment.sentry.wait()
 
-        # Test if nginx is running after changing tmpfs size
-        self.test_ngxps_running()
-
         expected = {
             'worker_processes': '1;',
             'worker_connections': '512;',
         }
 
         self.assertEqual(self.get_worker_setting(), expected)
+        self.test_valid_config()
 
     def test_reconfigure_enable_auto_worker_processes(self):
         """Test nginx auto worker is configured
@@ -95,18 +103,16 @@ class TestDeployment(unittest.TestCase):
         self.deployment.configure('ngxps', new_config)
         self.deployment.sentry.wait()
 
-        # Test if nginx is running after changing tmpfs size
-        self.test_ngxps_running()
-
         expected = {
             'worker_processes': 'auto;',
             'worker_connections': '1024;',
         }
 
         self.assertEqual(self.get_worker_setting(), expected)
+        self.test_valid_config()
 
     def test_reconfigure_tmpfs_size(self):
-        """Test tmpfs size change and nginx keep running when tmpfs size change
+        """Test tmpfs size change
 
         """
         # change tmpfs_size config and wait for hooks to complete
@@ -116,9 +122,6 @@ class TestDeployment(unittest.TestCase):
 
         self.deployment.configure('ngxps', new_config)
         self.deployment.sentry.wait()
-
-        # Test if nginx is running after changing tmpfs size
-        self.test_ngxps_running()
 
         fstab_contents = self.unit_zero.file_contents('/etc/fstab')
         expected_line = ('tmpfs /var/ngx_pagespeed_cache '
@@ -131,7 +134,7 @@ class TestDeployment(unittest.TestCase):
         self.assertEqual(occurs, 1)
 
     def test_reconfigure_dhe_size(self):
-        """Test dhe size change and nginx keep running when tmpfs size change
+        """Test dhe size change
 
         """
         # change dhe_size config and wait for hooks to complete
@@ -145,9 +148,6 @@ class TestDeployment(unittest.TestCase):
 
         self.deployment.configure('ngxps', new_config)
         self.deployment.sentry.wait()
-
-        # Test if nginx is running after changing dhe size
-        self.test_ngxps_running()
 
         output, code = self.unit_zero.run(
             'openssl dhparam -inform PEM -in {dhparams} -text'.format(
