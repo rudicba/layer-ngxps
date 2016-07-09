@@ -1,5 +1,5 @@
 server {
-    listen {{ listen }};
+    listen {{ listen|default('80') }};
 
     root {{ root }};
     index index.html index.htm;
