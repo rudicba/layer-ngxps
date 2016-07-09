@@ -1,8 +1,8 @@
 # Configuring PageSpeed Filters
-pagespeed RewriteLevel {{ RewriteLevel }};
+pagespeed RewriteLevel {{ RewriteLevel|default('CoreFilters') }};
 
 # Enable individual PageSpeed Filters
-{%- for EnableFilter in EnableFilters %}
+{%- for EnableFilter in EnableFilters|default([]) %}
 pagespeed EnableFilters {{ EnableFilter }};
 {%- endfor %}
 

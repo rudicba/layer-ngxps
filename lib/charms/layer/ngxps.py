@@ -142,6 +142,13 @@ def configure():
     ])
 
 
+def validate_config():
+    """Return true is nginx configuration is valid
+    """
+    ret_code = check_call(['/usr/local/nginx/sbin/nginx', '-t'])
+    return ret_code == 0
+
+
 def create_tmpfs(tmpfs_size):
     """ Create and mount tmp filesystem of desired size
     """
@@ -188,7 +195,7 @@ def add_site(context):
 
 
 def enable_sites(*sites):
-    """ Enable all sites in listed in sites, disable any site not in list
+    """ Enable all sites in sites list and disable any site not in list
     """
     sites_enabled = '/usr/local/nginx/conf/sites-enabled'
     if not os.path.isdir(sites_enabled):

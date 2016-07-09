@@ -1,4 +1,4 @@
-{%- if LearningMode %}
+{%- if LearningMode|default(False) %}
 LearningMode;
 {% endif %}
 SecRulesEnabled;
