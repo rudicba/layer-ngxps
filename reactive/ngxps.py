@@ -84,6 +84,10 @@ def update_status():
     """
     _, message = hookenv.status_get()
 
+    if not ngxps.validate_config():
+        hookenv.status_set('maintenance', 'nginx configuration test failed')
+        return
+
     if ngxps.running():
         if message != 'nginx running':
             hookenv.status_set('active', 'nginx running')
@@ -130,10 +134,16 @@ def nginx_reload():
 def disable_sites():
     """ Disable any sites created by old relations
     """
-    if not data_changed('web-engine.contexts', {}) or ngxps.no_sites():
+    if not data_changed('web-engine.contexts', {}):
         return
 
-    ngxps.enable_sites('')
+    context = {
+        'service_name': 'default',
+        'root': '/usr/local/nginx/html',
+    }
+
+    ngxps.add_site(context)
+    ngxps.enable_sites('default')
 
     set_state('ngxps.reload')
 
