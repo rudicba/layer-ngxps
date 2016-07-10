@@ -31,7 +31,7 @@ def install():
 
     # Try to get .deb file from charm path
     ngxps_deb = os.path.join(
-        hookenv.charm_dir(), 'resources', 'nginx_1.10.1-1_amd64.deb')
+        hookenv.charm_dir(), 'resources', 'ngxps_1.10.1-1_amd64.deb')
 
     # If .deb is not provided for charm, get it from resources
     if not os.path.isfile(ngxps_deb):
