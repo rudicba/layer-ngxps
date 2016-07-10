@@ -8,7 +8,7 @@ from charms.layer import ngxps
 from charms.reactive import (
     when, when_any, when_not, set_state, remove_state, hook
 )
-from charms.reactive.helpers import data_changed
+from charms.reactive.helpers import data_changed, is_state
 
 
 def reset_state():
@@ -29,26 +29,39 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
+    # Try to get .deb file from charm path
     ngxps_deb = os.path.join(
-        hookenv.charm_dir(), 'resources', 'nginx_1.10.1-1_amd64.deb')
+        hookenv.charm_dir(), 'resources', 'ngxps_1.10.1-1_amd64.deb')
 
-    if ngxps.install(ngxps_deb):
-        set_state('ngxps.installed')
-        set_state('ngxps.upgrade')
+    # If .deb is not provided for charm, get it from resources
+    if not os.path.isfile(ngxps_deb):
+        ngxps_deb = hookenv.resource_get('ngxps_deb')
 
-    set_state('ngxps.configure')
+    # If couldn't find any .deb, set status to maintenance
+    if not os.path.isfile(ngxps_deb):
+        hookenv.status_set('maintenance',
+                           'waiting for nginx pagespeed deb resource')
+    # Otherwise install provided deb package
+    else:
+        if ngxps.install(ngxps_deb):
+            set_state('ngxps.installed')
+            set_state('ngxps.upgrade')
+        # Nginx need to be configured
+        set_state('ngxps.configure')
 
 
 @when_any('config.changed', 'ngxps.configure')
 def configure():
     """ Configure Nginx Pagespeed
     """
+    # Function configure() return True if any config file change
     if ngxps.configure():
         hookenv.status_set('maintenance', 'configuring nginx')
         set_state('ngxps.reload')
 
     set_state('ngxps.configured')
     remove_state('ngxps.configure')
+    # Ensure ngxps is enabled at boot time
     ngxps.enable()
 
 
@@ -108,25 +121,29 @@ def start():
         update_status()
 
 
-@when('ngxps.ready', 'ngxps.upgrade')
+@when('ngxps.ready')
+@when_any('ngxps.upgrade', 'ngxps.reload', 'ngxps.restart')
 def nginx_upgrade():
-    """ Upgrade Nginx Pagespeed service
-    """
-    hookenv.status_set('active', 'upgrading nginx')
-    if ngxps.upgrade():
-        reset_state()
-        update_status()
+    """ Upgrade, reload or restart nginx
 
-
-@when('ngxps.ready', 'ngxps.reload')
-@when_not('ngxps.upgrade')
-def nginx_reload():
-    """ Reload Nginx Pagespeed service
+    if multiple state is reached give priority to restart then upgrade and last
+    priority to reload.
     """
-    hookenv.status_set('active', 'reloading nginx')
-    if ngxps.reload():
-        reset_state()
-        update_status()
+    if is_state('ngxps.restart'):
+        hookenv.status_set('active', 'restarting nginx')
+        if ngxps.restart():
+            hookenv.status_set('active', 'nginx successfully restarted')
+    elif is_state('ngxps.upgrade'):
+        hookenv.status_set('active', 'upgrading nginx')
+        if ngxps.upgrade():
+            hookenv.status_set('active', 'nginx successfully upgraded')
+    elif is_state('ngxps.reload'):
+        hookenv.status_set('active', 'reloading nginx')
+        if ngxps.reload():
+            hookenv.status_set('active', 'nginx successfully reloaded')
+
+    reset_state()
+    update_status()
 
 
 @when('ngxps.ready')
