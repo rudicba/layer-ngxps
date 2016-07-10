@@ -46,8 +46,12 @@ def install():
         if ngxps.install(ngxps_deb):
             set_state('ngxps.installed')
             set_state('ngxps.upgrade')
-        # Nginx need to be configured
+
+        # Nginx need to be configured.
         set_state('ngxps.configure')
+
+        # After upgrade could be new templates for sites.
+        data_changed('web-engine.contexts', {})
 
 
 @when_any('config.changed', 'ngxps.configure')
@@ -160,17 +164,14 @@ def disable_sites():
     }
 
     ngxps.add_site(context)
-    ngxps.enable_sites('default')
-
-    set_state('ngxps.reload')
+    if ngxps.enable_sites('default'):
+        set_state('ngxps.reload')
 
 
 @when('ngxps.ready', 'web-engine.available')
 def add_sites(webengine):
     """ Add servers blocks for all relations with charm
     """
-    # TODO: on upgrade sometimes templates changes, so this function needed
-    # to be runned not only if context change.
     if not data_changed('web-engine.contexts', webengine.contexts()):
         return
 
@@ -178,8 +179,7 @@ def add_sites(webengine):
 
     for context in webengine.contexts():
         ngxps.add_site(context)
-
         sites.append(context['service_name'])
 
-    ngxps.enable_sites(*sites)
-    set_state('ngxps.reload')
+    if ngxps.enable_sites(*sites):
+        set_state('ngxps.reload')
