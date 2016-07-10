@@ -3,6 +3,7 @@
 import os
 import platform
 import tarfile
+import hashlib
 
 from contextlib import contextmanager
 from shutil import rmtree, copyfile
@@ -12,7 +13,7 @@ from charmhelpers.core import host, hookenv
 from charmhelpers.core.templating import render
 from charmhelpers.fetch import apt_install
 
-from charms.reactive.helpers import any_file_changed
+from charms.reactive.helpers import any_file_changed, data_changed
 
 
 PACKAGES = ['build-essential', 'zlib1g-dev', 'libssl-dev', 'libpcre3',
@@ -182,28 +183,41 @@ def create_dhe(dhe_size):
 def add_site(context):
     """ Given context render all neccesaries files for site
     """
-    site_conf = os.path.join('/usr/local/nginx/conf/sites-enabled',
-                             context['service_name'])
-    host.mkdir(site_conf)
+    sites_enabled = '/usr/local/nginx/conf/sites-enabled'
+    conf_folder = os.path.join(sites_enabled, context['service_name'])
+    host.mkdir(conf_folder)
 
-    render('sites/naxsi.rules.j2',
-           os.path.join(site_conf, 'naxsi.rules'), context)
-    render('sites/pagespeed.conf.j2',
-           os.path.join(site_conf, 'pagespeed.conf'), context)
-    render('sites/site.conf.j2',
-           os.path.join(site_conf, 'site.conf'), context)
+    naxsi_rules = os.path.join(conf_folder, 'naxsi.rules')
+    pagespeed_conf = os.path.join(conf_folder, 'pagespeed.conf')
+    site_conf = os.path.join(conf_folder, 'site.conf')
+
+    render('sites/naxsi.rules.j2', naxsi_rules, context)
+    render('sites/pagespeed.conf.j2', pagespeed_conf, context)
+    render('sites/site.conf.j2', site_conf, context)
 
 
 def enable_sites(*sites):
     """ Enable all sites in sites list and disable any site not in list
+
+    return true if any file change, false otherwise
     """
     sites_enabled = '/usr/local/nginx/conf/sites-enabled'
+    sites_files = {}
+
     if not os.path.isdir(sites_enabled):
         return
 
     for f_path in os.listdir(sites_enabled):
         if f_path not in sites:
             rmtree(os.path.join(sites_enabled, f_path))
+
+    for path, subdirs, files in os.walk(sites_enabled):
+        for name in files:
+            conf_path = os.path.join(path, name)
+            md5 = hashlib.md5(open(conf_path, 'rb').read()).hexdigest()
+            sites_files[conf_path] = md5
+
+    return data_changed('ngxps.sites_files', sites_files)
 
 
 def enabled_sites():
