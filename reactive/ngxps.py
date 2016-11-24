@@ -1,10 +1,6 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
-import os
-
-from charmhelpers import fetch
 from charmhelpers.core import hookenv
-from charmhelpers.core import host
 from charms.layer import ngxps
 
 from charms.reactive import (
