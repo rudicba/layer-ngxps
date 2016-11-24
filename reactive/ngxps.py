@@ -2,7 +2,9 @@
 """
 import os
 
+from charmhelpers import fetch
 from charmhelpers.core import hookenv
+from charmhelpers.core import host
 from charms.layer import ngxps
 
 from charms.reactive import (
@@ -17,6 +19,7 @@ def reset_state():
     """
     remove_state('ngxps.reload')
     remove_state('ngxps.upgrade')
+    remove_state('ngxps.restart')
 
 
 @hook('upgrade-charm', 'install')
@@ -29,29 +32,28 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
-    # Try to get .deb file from charm path
-    ngxps_deb = os.path.join(
-        hookenv.charm_dir(), 'resources', 'ngxps_1.10.1-1_amd64.deb')
+    resource = hookenv.resource_get('ngxps')
+    if not resource:
+        hookenv.status_set('blocked', 'unable to fetch ngxps resource')
+        return
 
-    # If .deb is not provided for charm, get it from resources
-    if not os.path.isfile(ngxps_deb):
-        ngxps_deb = hookenv.resource_get('ngxps_deb')
+    hookenv.status_set('maintenance', 'installing ngxps')
 
-    # If couldn't find any .deb, set status to maintenance
-    if not os.path.isfile(ngxps_deb):
-        hookenv.status_set('maintenance',
-                           'waiting for nginx pagespeed deb resource')
-    # Otherwise install provided deb package
-    else:
-        if ngxps.install(ngxps_deb):
-            set_state('ngxps.installed')
-            set_state('ngxps.upgrade')
+    extracted = fetch.install_remote('file://' + resource)
+    # just in case trusty deb version of nginx not compatible with xenial
+    # codename = host.lsb_release()['DISTRIB_CODENAME']
 
-        # Nginx need to be configured.
-        set_state('ngxps.configure')
+    ngxps_deb = os.path.join(extracted, 'ngxps_1.10.1-1_amd64.deb')
 
-        # After upgrade could be new templates for sites.
-        data_changed('web-engine.contexts', {})
+    if ngxps.install(ngxps_deb):
+        set_state('ngxps.installed')
+        set_state('ngxps.upgrade')
+
+    # Nginx need to be configured.
+    set_state('ngxps.configure')
+
+    # After upgrade could be new templates for sites.
+    data_changed('web-engine.contexts', {})
 
 
 @when_any('config.changed', 'ngxps.configure')
