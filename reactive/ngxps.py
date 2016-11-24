@@ -1,7 +1,5 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
-import os
-
 from charmhelpers.core import hookenv
 from charms.layer import ngxps
 
@@ -17,6 +15,7 @@ def reset_state():
     """
     remove_state('ngxps.reload')
     remove_state('ngxps.upgrade')
+    remove_state('ngxps.restart')
 
 
 @hook('upgrade-charm', 'install')
@@ -29,29 +28,23 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
-    # Try to get .deb file from charm path
-    ngxps_deb = os.path.join(
-        hookenv.charm_dir(), 'resources', 'ngxps_1.10.1-1_amd64.deb')
+    ngxps_deb = hookenv.resource_get('ngxps_deb')
 
-    # If .deb is not provided for charm, get it from resources
-    if not os.path.isfile(ngxps_deb):
-        ngxps_deb = hookenv.resource_get('ngxps_deb')
+    if not ngxps_deb:
+        hookenv.status_set('blocked', 'unable to fetch ngxps resource')
+        return
 
-    # If couldn't find any .deb, set status to maintenance
-    if not os.path.isfile(ngxps_deb):
-        hookenv.status_set('maintenance',
-                           'waiting for nginx pagespeed deb resource')
-    # Otherwise install provided deb package
-    else:
-        if ngxps.install(ngxps_deb):
-            set_state('ngxps.installed')
-            set_state('ngxps.upgrade')
+    hookenv.status_set('maintenance', 'installing ngxps')
 
-        # Nginx need to be configured.
-        set_state('ngxps.configure')
+    if ngxps.install(ngxps_deb):
+        set_state('ngxps.installed')
+        set_state('ngxps.upgrade')
 
-        # After upgrade could be new templates for sites.
-        data_changed('web-engine.contexts', {})
+    # Nginx need to be configured.
+    set_state('ngxps.configure')
+
+    # After upgrade could be new templates for sites.
+    data_changed('web-engine.contexts', {})
 
 
 @when_any('config.changed', 'ngxps.configure')

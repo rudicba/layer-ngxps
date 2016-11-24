@@ -1,2 +1,2 @@
-# layer-ngxps
-Nginx Pagespeed layer
+# Nginx Pagespeed with NAXSI support
+
