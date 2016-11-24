@@ -27,6 +27,6 @@ resources:
   ngxps_deb:
     type: file
     filename: ngxps.deb
-    description: "nginx pagespeed deb file"
+    description: "Nginx pagespeed deb file"
 series:
   - trusty
