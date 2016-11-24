@@ -32,18 +32,13 @@ def install():
     """
     hookenv.status_set('maintenance', 'installing nginx')
 
-    resource = hookenv.resource_get('ngxps')
-    if not resource:
+    ngxps_deb = hookenv.resource_get('ngxps_deb')
+
+    if not ngxps_deb:
         hookenv.status_set('blocked', 'unable to fetch ngxps resource')
         return
 
     hookenv.status_set('maintenance', 'installing ngxps')
-
-    extracted = fetch.install_remote('file://' + resource)
-    # just in case trusty deb version of nginx not compatible with xenial
-    # codename = host.lsb_release()['DISTRIB_CODENAME']
-
-    ngxps_deb = os.path.join(extracted, 'ngxps_1.10.1-1_amd64.deb')
 
     if ngxps.install(ngxps_deb):
         set_state('ngxps.installed')
