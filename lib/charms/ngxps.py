@@ -1,4 +1,4 @@
-""" Nginx pagespeed installer and manager
+""" Nginx pagespeed utils
 """
 import os
 import platform
