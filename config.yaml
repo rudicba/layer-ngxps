@@ -11,13 +11,13 @@ options:
     type: int
     default: 1024
     description: |
-      Maximum number of simultaneous connections that can be opened
+      maximum number of simultaneous connections that can be opened
       by a worker process
   tmpfs_size:
     type: int
     default: 256
-    description: "Tmpfs size in MB to use for nginx pagespeed cache"
+    description: tmpfs size in MB to use for nginx pagespeed cache
   dhe_size:
     type: int
     default: 1024
-    description: "(Ephemeral Diffie-Hellman) key size, used for SSL"
+    description: (Ephemeral Diffie-Hellman) key size, used for SSL
