@@ -1,0 +1,14 @@
+builddeb:
+  description: build ngxps from source
+  params:
+    nginx-version:
+      type: string
+      description: nginx version number (http://nginx.org/download)
+    nps-version:
+      type: string
+      description: nps version number (https://developers.google.com/speed/pagespeed/module/release_notes)
+    naxsi-version:
+      type: string
+      description: naxsi version number (https://github.com/nbs-system/naxsi/releases)
+  required: [nginx-version, nps-version, naxsi-version]
+  additionalProperties: false
