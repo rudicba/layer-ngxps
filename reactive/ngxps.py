@@ -1,7 +1,7 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
 from charmhelpers.core import hookenv
-from charms.layer import ngxps
+from charms import ngxps
 
 from charms.reactive import (
     when, when_any, when_not, set_state, remove_state, hook
@@ -19,7 +19,7 @@ def reset_state():
 
 
 @hook('upgrade-charm', 'install')
-def install():
+def install_ngxps():
     """ Install or upgrade Nginx Pagespeed, if new version is installed it
     will set two states: installed and upgrade.
 
@@ -94,9 +94,9 @@ def update_status():
     """
     _, message = hookenv.status_get()
 
-    if not ngxps.validate_config():
-        hookenv.status_set('maintenance', 'nginx configuration test failed')
-        return
+    # if not ngxps.validate_config():
+    #     hookenv.status_set('maintenance', 'nginx configuration test failed')
+    #     return
 
     if ngxps.running():
         if message != 'nginx running':
