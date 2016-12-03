@@ -174,15 +174,23 @@ def conf_files():
 
 
 def enable():
-    render('init.d/nginx.j2', '/etc/init.d/nginx',
-           {}, owner='root', group='root', perms=0o755)
+    if host.init_is_systemd():
+        render('systemd/nginx.service.j2', '/etc/systemd/system/nginx.service',
+               {}, owner='root', group='root', perms=0o755)
+    else:
+        render('init.d/nginx.j2', '/etc/init.d/nginx',
+               {}, owner='root', group='root', perms=0o755)
 
 
 def disable():
-    initd = '/etc/init.d/nginx'
-
-    if os.path.isfile(initd):
-        os.remove(initd)
+    if host.init_is_systemd():
+        systemd = '/etc/systemd/system/nginx.service'
+        if os.path.isfile(systemd):
+            os.remove(systemd)
+    else:
+        initd = '/etc/init.d/nginx'
+        if os.path.isfile(initd):
+            os.remove(initd)
 
 
 def stop():

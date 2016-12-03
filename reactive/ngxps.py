@@ -1,7 +1,7 @@
 """ Reactive layer for install and manage Nginx Pagespeed
 """
 from charmhelpers.core import hookenv
-from charms import ngxps
+from charms.layer import ngxps
 
 from charms.reactive import (
     when, when_any, when_not, set_state, remove_state, hook
