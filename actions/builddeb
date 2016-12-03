@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+import os
+import platform
+import tarfile
+import tempfile
+
+from shutil import rmtree, copyfile
+from subprocess import check_call, DEVNULL
+
+from charmhelpers.core import host, hookenv
+from charmhelpers.fetch import apt_install, archiveurl
+
+
+PACKAGES = ['build-essential', 'zlib1g-dev', 'libssl-dev', 'libpcre3',
+            'libpcre3-dev', 'unzip', 'geoip-database', 'wget', 'libgeoip1',
+            'libgeoip-dev', 'checkinstall']
+
+BUILD_PATH = '/root/build'
+
+BUILD_OPTS = [
+    '--with-http_ssl_module',
+    '--with-http_gzip_static_module',
+    '--without-mail_pop3_module',
+    '--without-mail_smtp_module',
+    '--without-mail_imap_module',
+    '--with-http_geoip_module',
+    '--http-client-body-temp-path=/usr/local/nginx/temp/body',
+    '--http-fastcgi-temp-path=/usr/local/nginx/temp/fastcgi',
+    '--http-proxy-temp-path=/usr/local/nginx/temp/proxy',
+    '--http-scgi-temp-path=/usr/local/nginx/temp/scgi',
+    '--http-uwsgi-temp-path=/usr/local/nginx/temp/uwsgi',
+]
+
+
+def download_and_build(nginx_ver, nps_ver, naxsi_ver):
+    client = archiveurl.ArchiveUrlFetchHandler()
+
+    nginx_src = "nginx-{}.tar.gz".format(nginx_ver)
+    nps_src = "v{}-beta.tar.gz".format(nps_ver)
+    psol_src = "{}.tar.gz".format(nps_ver)
+    naxsi_src = "{}.tar.gz".format(naxsi_ver)
+
+    nginx_url = "http://nginx.org/download/{}".format(nginx_src)
+    nps_url = "https://github.com/pagespeed/ngx_pagespeed/archive/{}".format(
+        nps_src)
+    psol_url = "https://dl.google.com/dl/page-speed/psol/{}".format(psol_src)
+    naxsi_url = "https://github.com/nbs-system/naxsi/archive/{}".format(
+        naxsi_src)
+
+    nginx_dst = os.path.join(tempfile.gettempdir(), nginx_src)
+    nps_dst = os.path.join(tempfile.gettempdir(), nps_src)
+    psol_dst = os.path.join(tempfile.gettempdir(), psol_src)
+    naxsi_dst = os.path.join(tempfile.gettempdir(), naxsi_src)
+
+    if not os.path.isfile(nginx_dst):
+        client.download(nginx_url, nginx_dst)
+    if not os.path.isfile(nps_dst):
+        client.download(nps_url, nps_dst)
+    if not os.path.isfile(psol_dst):
+        client.download(psol_url, psol_dst)
+    if not os.path.isfile(naxsi_dst):
+        client.download(naxsi_url, naxsi_dst)
+
+    return build_sources(nginx_dst, nps_dst, psol_dst, naxsi_dst)
+
+
+def extract(tar, destination):
+    """ Extract tar.gz file into destination, return path to extracted file
+    up a directory
+    """
+    tarfile.open(tar, 'r:gz').extractall(path=destination)
+    return os.path.join(destination, tar_root(tar))
+
+
+def tar_root(tar):
+    """ Return name of root directory of tar.gz file
+    """
+    return tarfile.open(tar, 'r:gz').getnames()[0]
+
+
+def build_sources(nginx, nps, psol, naxsi):
+    """ Build nginx with pagespeed and naxsi modules
+    """
+    release = '1'
+    arch = 'amd64' if platform.machine() == 'x86_64' else 'i386'
+
+    if os.path.isdir(BUILD_PATH):
+        rmtree(BUILD_PATH)
+
+    nginx_src = extract(nginx, BUILD_PATH)
+    nps_src = extract(nps, BUILD_PATH)
+    naxsi_src = extract(naxsi, BUILD_PATH)
+    extract(psol, nps_src)
+
+    version = os.path.basename(os.path.normpath(nginx_src)).split('-', 1)[1]
+    name = 'ngxps'
+
+    apt_install(PACKAGES)
+
+    with host.chdir(nginx_src):
+        configure_cmd = [
+            './configure', '--add-module={}'.format(nps_src),
+            '--add-module={}'.format(os.path.join(naxsi_src, 'naxsi_src')),
+        ] + BUILD_OPTS
+        check_call(configure_cmd, stdout=DEVNULL)
+        check_call(['make'], stdout=DEVNULL)
+        check_call(['checkinstall',
+                    '--install=no',
+                    '--fstrans=yes',
+                    '--pkgname={}'.format(name),
+                    '--pkgversion={}'.format(version),
+                    '--pkgrelease={}'.format(release),
+                    '--pkgarch={}'.format(arch)])
+
+    deb = '{name}_{version}-{release}_{arch}.deb'.format(
+        name=name, version=version,
+        release=release, arch=arch)
+
+    src = os.path.join(nginx_src, deb)
+    dst = os.path.join('/home/ubuntu', deb)
+
+    copyfile(src, dst)
+    host.chownr(dst, 'ubuntu', 'ubuntu', chowntopdir=True)
+
+    return dst
+
+if __name__ == "__main__":
+    nginx_ver = hookenv.action_get("nginx-version")
+    nps_ver = hookenv.action_get("nps-version")
+    naxsi_ver = hookenv.action_get("naxsi-version")
+
+    deb_path = download_and_build(nginx_ver, nps_ver, naxsi_ver)
+    hookenv.action_set({'binary': deb_path})

@@ -1,8 +1,6 @@
-""" Nginx pagespeed installer and manager
+""" Nginx pagespeed utils
 """
 import os
-import platform
-import tarfile
 import hashlib
 
 from contextlib import contextmanager
@@ -11,83 +9,9 @@ from subprocess import check_call, DEVNULL
 
 from charmhelpers.core import host, hookenv
 from charmhelpers.core.templating import render
-from charmhelpers.fetch import apt_install
+
 
 from charms.reactive.helpers import any_file_changed, data_changed
-
-
-PACKAGES = ['build-essential', 'zlib1g-dev', 'libssl-dev', 'libpcre3',
-            'libpcre3-dev', 'unzip', 'geoip-database', 'wget', 'libgeoip1',
-            'libgeoip-dev', 'checkinstall']
-
-BUILD_PATH = '/root/build'
-
-BUILD_OPTS = [
-    '--with-http_ssl_module',
-    '--with-http_gzip_static_module',
-    '--without-mail_pop3_module',
-    '--without-mail_smtp_module',
-    '--without-mail_imap_module',
-    '--with-http_geoip_module',
-    '--http-client-body-temp-path=/usr/local/nginx/temp/body',
-    '--http-fastcgi-temp-path=/usr/local/nginx/temp/fastcgi',
-    '--http-proxy-temp-path=/usr/local/nginx/temp/proxy',
-    '--http-scgi-temp-path=/usr/local/nginx/temp/scgi',
-    '--http-uwsgi-temp-path=/usr/local/nginx/temp/uwsgi',
-]
-
-
-def extract(tar, destination):
-    """ Extract tar.gz file into destination, return path to extracted file
-    up a directory
-    """
-    tarfile.open(tar, 'r:gz').extractall(path=destination)
-    return os.path.join(destination, tar_root(tar))
-
-
-def tar_root(tar):
-    """ Return name of root directory of tar.gz file
-    """
-    return tarfile.open(tar, 'r:gz').getnames()[0]
-
-
-def build_sources(nginx, nps, psol, naxsi):
-    """ Build nginx with pagespeed and naxsi modules
-    """
-    release = '1'
-    arch = 'amd64' if platform.machine() == 'x86_64' else 'i386'
-
-    if os.path.isdir(BUILD_PATH):
-        rmtree(BUILD_PATH)
-
-    nginx_src = extract(nginx, BUILD_PATH)
-    nps_src = extract(nps, BUILD_PATH)
-    naxsi_src = extract(naxsi, BUILD_PATH)
-    extract(psol, nps_src)
-
-    version = os.path.basename(os.path.normpath(nginx_src)).split('-', 1)[1]
-
-    apt_install(PACKAGES)
-
-    with host.chdir(nginx_src):
-        configure_cmd = [
-            './configure', '--add-module={}'.format(nps_src),
-            '--add-module={}'.format(os.path.join(naxsi_src, 'naxsi_src')),
-        ] + BUILD_OPTS
-        check_call(configure_cmd, stdout=DEVNULL)
-        check_call(['make'], stdout=DEVNULL)
-        check_call(['checkinstall',
-                    '--install=yes',
-                    '--fstrans=no',
-                    '--pkgname=nginx',
-                    '--pkgversion={}'.format(version),
-                    '--pkgrelease={}'.format(release),
-                    '--pkgarch={}'.format(arch),
-                    '-y', 'make', 'install'])
-
-        deb = '{name}_{version}-{release}_{arch}'
-
-    return os.path.join(nginx_src, deb)
 
 
 def install(src):
