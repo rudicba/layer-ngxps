@@ -1,2 +1,2 @@
 repo: git@github.com:rudicba/layer-ngxps.git
-includes: ['layer:basic', 'interface:interface-ngxps-vhost']
+includes: ['layer:basic', 'interface:interface-ngxps-vhost', 'interface:memcache']
