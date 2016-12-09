@@ -1,5 +1,5 @@
 {%- if memcaches %}
 pagespeed MemcachedThreads 1;
 pagespeed MemcachedServers "{%- for memcache in memcaches %}{{ memcache }},{%- endfor %}";
-{% endif %}
+{%- endif %}
 pagespeed FileCachePath /var/ngx_pagespeed_cache;
