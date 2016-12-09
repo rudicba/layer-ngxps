@@ -9,7 +9,11 @@ server {
 
     include sites-enabled/{{ service_name }}/pagespeed.conf;
 
+    {%- if access_log %}
     access_log /usr/local/nginx/logs/{{ service_name }}_access.log;
+    {%- else %}
+    access_log off;
+    {%- endif %}
     error_log /usr/local/nginx/logs/{{ service_name }}_error.log;
 
     location / {

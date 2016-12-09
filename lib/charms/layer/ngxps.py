@@ -67,6 +67,23 @@ def configure():
     ])
 
 
+def set_cache(context={}):
+    """Render cache config.
+
+    Return:
+        True if new memcache is render
+    """
+
+    hookenv.log(context)
+
+    render('conf/cache.conf.j2', '/usr/local/nginx/conf/cache.conf',
+           context, owner='root', group='root')
+
+    return any_file_changed([
+        '/usr/local/nginx/conf/cache.conf',
+    ])
+
+
 def validate_config():
     """Return true is nginx configuration is valid
     """

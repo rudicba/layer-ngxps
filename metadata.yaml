@@ -23,11 +23,15 @@ tags:
 provides:
   web-engine:
     interface: ngxps-vhost
+requires:
+  memcache:
+    interface: memcache
+    optional: true
 resources:
   ngxps_deb:
     type: file
     filename: ngxps.deb
     description: "nginx pagespeed deb file"
 series:
-  - trusty
   - xenial
+  - trusty
