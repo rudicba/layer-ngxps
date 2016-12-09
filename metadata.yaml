@@ -33,5 +33,5 @@ resources:
     filename: ngxps.deb
     description: "nginx pagespeed deb file"
 series:
-  - trusty
   - xenial
+  - trusty
