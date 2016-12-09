@@ -94,9 +94,9 @@ def update_status():
     """
     _, message = hookenv.status_get()
 
-    # if not ngxps.validate_config():
-    #     hookenv.status_set('maintenance', 'nginx configuration test failed')
-    #     return
+    if not ngxps.validate_config():
+        hookenv.status_set('maintenance', 'nginx configuration test failed')
+        return
 
     if ngxps.running():
         if message != 'nginx running':
@@ -175,4 +175,25 @@ def add_sites(webengine):
         sites.append(context['service_name'])
 
     if ngxps.enable_sites(*sites):
+        set_state('ngxps.reload')
+
+
+@when('ngxps.ready')
+@when_not('memcache.available')
+def remove_memcache():
+    if not data_changed('memcache.contexts', {}):
+        return
+
+    if ngxps.set_cache():
+        set_state('ngxps.reload')
+
+
+@when('ngxps.ready', 'memcache.available')
+def add_memcache(memcache):
+    memcaches = {'memcaches': memcache.memcache_hosts()}
+
+    if not data_changed('memcache.contexts', memcaches):
+        return
+
+    if ngxps.set_cache(memcaches):
         set_state('ngxps.reload')
