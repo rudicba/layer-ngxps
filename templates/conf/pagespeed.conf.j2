@@ -5,8 +5,7 @@ pagespeed on;
 pagespeed RewriteLevel PassThrough;
 
 # Configuring PageSpeed Filters caches
-# pagespeed MemcachedServers "127.0.0.1:11211";
-pagespeed FileCachePath /var/ngx_pagespeed_cache;
+include cache.conf;
 
 # PageSpeed Admin
 pagespeed StatisticsPath /ngx_pagespeed_statistics;
