@@ -106,7 +106,8 @@ def update_status():
             hookenv.status_set('maintenance', 'nginx not running')
 
 
-@when('ngxps.installed', 'ngxps.configured', 'dhe.ready', 'tmpfs.ready')
+@when('ngxps.installed', 'ngxps.configured', 'dhe.ready',
+      'tmpfs.ready', 'ngxps.cache_ready')
 @when_not('ngxps.ready')
 def start():
     """ Start Nginx Pagespeed service
@@ -178,7 +179,6 @@ def add_sites(webengine):
         set_state('ngxps.reload')
 
 
-@when('ngxps.ready')
 @when_not('memcache.available')
 def remove_memcache():
     if not data_changed('memcache.contexts', {}):
@@ -186,9 +186,10 @@ def remove_memcache():
 
     if ngxps.set_cache():
         set_state('ngxps.reload')
+        set_state('ngxps.cache_ready')
 
 
-@when('ngxps.ready', 'memcache.available')
+@when('memcache.available')
 def add_memcache(memcache):
     memcaches = {'memcaches': memcache.memcache_hosts()}
 
@@ -197,3 +198,4 @@ def add_memcache(memcache):
 
     if ngxps.set_cache(memcaches):
         set_state('ngxps.reload')
+        set_state('ngxps.cache_ready')
